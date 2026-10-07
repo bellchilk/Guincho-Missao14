@@ -3,18 +3,19 @@ name: Gerar APK Android
 on:
   workflow_dispatch:
   push:
-    branches: [ "main", "master" ]
+    branches:
+      - main
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
-      - name: Baixar repositório
-        uses: actions/checkout@v4
+      - name: Baixar repositorio
+        uses: actions/checkout@v5
 
       - name: Instalar Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
@@ -22,21 +23,21 @@ jobs:
       - name: Instalar Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: "3.47.6"
           channel: stable
           cache: true
 
-      - name: Criar estrutura Android se necessário
-        run: flutter create --platforms=android .
+      - name: Criar estrutura Android
+        run: flutter create --platforms=android --no-pub .
 
-      - name: Aplicar permissões Android da Missão 14
+      - name: Aplicar permissoes Android
         run: python3 tool/patch_android.py
 
-      - name: Baixar dependências
+      - name: Baixar dependencias
         run: flutter pub get
 
-      - name: Verificar projeto
-        run: flutter analyze
-        continue-on-error: true
+      - name: Verificar codigo
+        run: flutter analyze lib
 
       - name: Gerar APK
         run: flutter build apk --release

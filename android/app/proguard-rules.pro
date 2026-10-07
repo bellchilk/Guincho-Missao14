@@ -1,1 +1,1 @@
--keep class com.lib.flutter_blue_plus.** { *; }
+-keep class com.lib.flutter_blue_plus.** { *; }\n

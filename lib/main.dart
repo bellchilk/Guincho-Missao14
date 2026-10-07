@@ -106,8 +106,10 @@ class _Mission14PageState extends State<Mission14Page> {
       value = 'https://$value';
     }
 
-    value = value.replaceFirst(RegExp(r'/model\.json.*$', caseSensitive: false), '/');
-    value = value.replaceFirst(RegExp(r'/metadata\.json.*$', caseSensitive: false), '/');
+    value = value.replaceFirst(
+        RegExp(r'/model\.json.*$', caseSensitive: false), '/');
+    value = value.replaceFirst(
+        RegExp(r'/metadata\.json.*$', caseSensitive: false), '/');
 
     if (!value.endsWith('/')) value += '/';
     return value;
@@ -122,7 +124,8 @@ class _Mission14PageState extends State<Mission14Page> {
     }
 
     if (!webReady || webController == null) {
-      _snack('A câmera ainda está iniciando. Tente novamente em alguns segundos.');
+      _snack(
+          'A câmera ainda está iniciando. Tente novamente em alguns segundos.');
       return;
     }
 
@@ -150,7 +153,8 @@ class _Mission14PageState extends State<Mission14Page> {
   }
 
   Future<void> _openTeachableMachine() async {
-    final uri = Uri.parse('https://teachablemachine.withgoogle.com/train/image');
+    final uri =
+        Uri.parse('https://teachablemachine.withgoogle.com/train/image');
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       _snack('Não foi possível abrir o Teachable Machine.');
     }
@@ -518,9 +522,7 @@ class _Mission14PageState extends State<Mission14Page> {
   }
 
   Widget _espCard() {
-    final bg = espConnected
-        ? const Color(0xFFE4F8F2)
-        : const Color(0xFFFFEAEA);
+    final bg = espConnected ? const Color(0xFFE4F8F2) : const Color(0xFFFFEAEA);
     final fg = espConnected ? green : red;
 
     return InkWell(
@@ -670,21 +672,19 @@ class _Mission14PageState extends State<Mission14Page> {
                     final reason = data['reason']?.toString() ?? 'erro';
 
                     if (reason == 'missing_labels') {
-                      final missing = ((data['missing'] as List?) ?? [])
-                          .join(', ');
+                      final missing =
+                          ((data['missing'] as List?) ?? []).join(', ');
 
                       setState(() {
                         modelReady = false;
                         loadingModel = false;
-                        modelStatus =
-                            'Faltam classes no modelo: $missing';
+                        modelStatus = 'Faltam classes no modelo: $missing';
                       });
                     } else {
                       setState(() {
                         modelReady = false;
                         loadingModel = false;
-                        modelStatus =
-                            'Não foi possível carregar esse modelo.';
+                        modelStatus = 'Não foi possível carregar esse modelo.';
                       });
                     }
 
@@ -880,7 +880,9 @@ class _Mission14PageState extends State<Mission14Page> {
     Color valueColor,
   ) {
     return Container(
-      minHeight: 155,
+      constraints: const BoxConstraints(
+        minHeight: 155,
+      ),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
