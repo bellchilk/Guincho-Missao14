@@ -1,0 +1,48 @@
+name: Gerar APK Android
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main", "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+
+      - name: Instalar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Instalar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Criar estrutura Android se necessário
+        run: flutter create --platforms=android .
+
+      - name: Aplicar permissões Android da Missão 14
+        run: python3 tool/patch_android.py
+
+      - name: Baixar dependências
+        run: flutter pub get
+
+      - name: Verificar projeto
+        run: flutter analyze
+        continue-on-error: true
+
+      - name: Gerar APK
+        run: flutter build apk --release
+
+      - name: Salvar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: guincho-missao14-apk
+          path: build/app/outputs/flutter-apk/app-release.apk

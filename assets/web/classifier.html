@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #eef6f6;
+      font-family: Arial, sans-serif;
+    }
+
+    #stage {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #eaf4f4;
+    }
+
+    #webcam-container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #webcam-container canvas {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover;
+      transform: scaleX(-1);
+    }
+
+    #message {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      bottom: 16px;
+      padding: 11px 14px;
+      border-radius: 18px;
+      color: white;
+      background: rgba(0,0,0,.55);
+      text-align: center;
+      font-weight: 700;
+      font-size: 14px;
+      z-index: 5;
+    }
+
+    .hidden { display: none; }
+  </style>
+
+  <!-- Versões fixas para evitar mudanças inesperadas em aula -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.5/dist/teachablemachine-image.min.js"></script>
+</head>
+<body>
+  <div id="stage">
+    <div id="webcam-container"></div>
+    <div id="message">Cole o link do seu modelo e toque em CARREGAR MODELO.</div>
+  </div>
+
+<script>
+const REQUIRED = [
+  "PUNHO",
+  "MAO_ABERTA",
+  "JOINHA",
+  "ESQUERDA",
+  "DIREITA",
+  "NENHUM"
+];
+
+let model = null;
+let webcam = null;
+let running = false;
+let busy = false;
+let timer = null;
+let currentModelUrl = "";
+
+function send(handler, payload) {
+  try {
+    if (window.flutter_inappwebview) {
+      window.flutter_inappwebview.callHandler(handler, JSON.stringify(payload));
+    }
+  } catch (e) {
+    console.log("Bridge error:", e);
+  }
+}
+
+function setMessage(text) {
+  document.getElementById("message").innerText = text;
+}
+
+function normalizeBaseUrl(value) {
+  let url = String(value || "").trim();
+
+  if (!url) throw new Error("Cole o link do modelo.");
+
+  if (!/^https?:\/\//i.test(url)) {
+    url = "https://" + url;
+  }
+
+  // Aceita também model.json colado por engano.
+  url = url.replace(/\/model\.json.*$/i, "/");
+  url = url.replace(/\/metadata\.json.*$/i, "/");
+
+  if (!url.endsWith("/")) url += "/";
+  return url;
+}
+
+async function stopCamera() {
+  running = false;
+  if (timer) {
+    clearTimeout(timer);
+    timer = null;
+  }
+
+  if (webcam) {
+    try { webcam.stop(); } catch (_) {}
+  }
+
+  webcam = null;
+  const container = document.getElementById("webcam-container");
+  container.innerHTML = "";
+}
+
+async function loadModel(rawUrl) {
+  try {
+    await stopCamera();
+
+    setMessage("Carregando seu modelo...");
+    currentModelUrl = normalizeBaseUrl(rawUrl);
+
+    const modelURL = currentModelUrl + "model.json";
+    const metadataURL = currentModelUrl + "metadata.json";
+
+    model = await tmImage.load(modelURL, metadataURL);
+
+    let labels = [];
+    try {
+      labels = model.getClassLabels();
+    } catch (_) {
+      // Fallback a partir do metadata, se necessário.
+      const metadata = await fetch(metadataURL).then(r => r.json());
+      labels = metadata.labels || [];
+    }
+
+    labels = labels.map(x => String(x).trim().toUpperCase());
+
+    const missing = REQUIRED.filter(r => !labels.includes(r));
+    const extra = labels.filter(l => !REQUIRED.includes(l));
+
+    if (missing.length > 0) {
+      setMessage("Seu modelo precisa ser corrigido.");
+      send("modelStatus", {
+        ok: false,
+        reason: "missing_labels",
+        missing,
+        labels,
+        extra
+      });
+      return;
+    }
+
+    webcam = new tmImage.Webcam(360, 360, false);
+    await webcam.setup();
+    await webcam.play();
+
+    const container = document.getElementById("webcam-container");
+    container.innerHTML = "";
+    container.appendChild(webcam.canvas);
+
+    running = true;
+    setMessage("Modelo carregado! Mostre um gesto para a câmera.");
+
+    send("modelStatus", {
+      ok: true,
+      url: currentModelUrl,
+      labels,
+      extra
+    });
+
+    schedulePrediction(350);
+  } catch (e) {
+    console.error(e);
+    setMessage("Não foi possível carregar o modelo.");
+    send("modelStatus", {
+      ok: false,
+      reason: "load_error",
+      message: String(e)
+    });
+  }
+}
+
+function schedulePrediction(delayMs) {
+  if (!running) return;
+  timer = setTimeout(predictOnce, delayMs);
+}
+
+async function predictOnce() {
+  if (!running || !model || !webcam) return;
+  if (busy) {
+    schedulePrediction(250);
+    return;
+  }
+
+  busy = true;
+  try {
+    webcam.update();
+
+    const predictions = await model.predict(webcam.canvas, true);
+
+    let best = null;
+    for (const p of predictions) {
+      if (!best || p.probability > best.probability) best = p;
+    }
+
+    if (best) {
+      send("prediction", {
+        label: String(best.className).trim().toUpperCase(),
+        confidence: Number(best.probability),
+        all: predictions.map(p => ({
+          label: String(p.className).trim().toUpperCase(),
+          confidence: Number(p.probability)
+        }))
+      });
+    }
+  } catch (e) {
+    send("classifierError", { message: String(e) });
+  } finally {
+    busy = false;
+    // Uma classificação aproximadamente a cada 650 ms.
+    schedulePrediction(650);
+  }
+}
+
+window.loadClubRobotModel = loadModel;
+window.stopClubRobotCamera = stopCamera;
+
+send("webReady", { ok: true });
+</script>
+</body>
+</html>
