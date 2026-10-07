@@ -1,5 +1,4 @@
 from pathlib import Path
-import shutil
 
 ROOT = Path(__file__).resolve().parents[1]
 custom_manifest = ROOT / "android" / "app" / "src" / "main" / "AndroidManifest.xml"
@@ -63,6 +62,6 @@ custom_manifest.parent.mkdir(parents=True, exist_ok=True)
 custom_manifest.write_text(manifest, encoding="utf-8")
 
 proguard = ROOT / "android" / "app" / "proguard-rules.pro"
-proguard.write_text("-keep class com.lib.flutter_blue_plus.** { *; }\\n", encoding="utf-8")
+proguard.write_text("-keep class com.lib.flutter_blue_plus.** { *; }\n", encoding="utf-8")
 
 print("Permissões Android aplicadas.")
