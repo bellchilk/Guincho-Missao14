@@ -29,5 +29,5 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: false
-  image_path: "assets/images/Robô Clube em Festa.png"
+  image_path: "assets/images/Robô Cheerful com Braços Erguidos.png"
   min_sdk_android: 21
