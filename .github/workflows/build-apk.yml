@@ -36,6 +36,9 @@ jobs:
       - name: Baixar dependencias
         run: flutter pub get
 
+      - name: Gerar icone ClubRobot
+        run: dart run flutter_launcher_icons
+
       - name: Verificar codigo
         run: flutter analyze lib
 
