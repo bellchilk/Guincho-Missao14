@@ -1,52 +1,44 @@
-name: Gerar APK Android
+name: Gerar APK Android - Roleta da Sorte
 
 on:
   workflow_dispatch:
   push:
     branches:
       - main
+      - missao12-roleta
 
 jobs:
   build:
     runs-on: ubuntu-24.04
-
     steps:
       - name: Baixar repositorio
         uses: actions/checkout@v5
-
       - name: Instalar Java
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
-
       - name: Instalar Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.47.6"
           channel: stable
           cache: true
-
       - name: Criar estrutura Android
         run: flutter create --platforms=android --no-pub .
-
       - name: Aplicar permissoes Android
         run: python3 tool/patch_android.py
-
       - name: Baixar dependencias
         run: flutter pub get
-
       - name: Gerar icone ClubRobot
         run: dart run flutter_launcher_icons
-
       - name: Verificar codigo
         run: flutter analyze lib
-
       - name: Gerar APK
         run: flutter build apk --release
-
       - name: Salvar APK
         uses: actions/upload-artifact@v4
         with:
-          name: guincho-missao14-apk
+          name: roleta-missao12-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
