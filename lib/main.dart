@@ -1,960 +1,312 @@
-import 'dart:convert';
-
+import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:url_launcher/url_launcher.dart';
-
 import 'services/ble_service.dart';
 
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  runApp(const GuinchoMissionApp());
-}
+void main() => runApp(const RoletaApp());
 
-class GuinchoMissionApp extends StatelessWidget {
-  const GuinchoMissionApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Guincho Inteligente • Missão 14',
-      theme: ThemeData(
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF3F7F7),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF20C6C8),
-        ),
-      ),
-      home: const Mission14Page(),
-    );
-  }
-}
-
-enum AppMode {
-  test,
-  crane,
-}
-
-class Mission14Page extends StatefulWidget {
-  const Mission14Page({super.key});
-
-  @override
-  State<Mission14Page> createState() => _Mission14PageState();
-}
-
-class _Mission14PageState extends State<Mission14Page> {
+class RoletaApp extends StatelessWidget {
+  const RoletaApp({super.key});
   static const teal = Color(0xFF20C6C8);
-  static const orange = Color(0xFFFF7A00);
-  static const red = Color(0xFFD74242);
-  static const green = Color(0xFF169B7B);
-  static const requiredLabels = <String>[
-    'PUNHO',
-    'MAO_ABERTA',
-    'JOINHA',
-    'ESQUERDA',
-    'DIREITA',
-    'NENHUM',
-  ];
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    title: 'Roleta da Sorte • ClubRobot',
+    debugShowCheckedModeBanner: false,
+    theme: ThemeData(useMaterial3: true, scaffoldBackgroundColor: const Color(0xFFF3F7F7), colorScheme: ColorScheme.fromSeed(seedColor: teal)),
+    home: const RoletaHomePage(),
+  );
+}
 
-  final modelController = TextEditingController();
-  final ble = BleService();
+class Challenge {
+  const Challenge(this.emoji, this.title, this.instruction);
+  final String emoji, title, instruction;
+}
+class Category {
+  const Category(this.id, this.name, this.label, this.color, this.emoji, this.challenges);
+  final String id, name, label, emoji;
+  final Color color;
+  final List<Challenge> challenges;
+}
 
-  InAppWebViewController? webController;
+const categories = <Category>[
+  Category('roxo_escuro','Bichos Malucos','ROXO ESCURO',Color(0xFF5E35B1),'🐾',[
+    Challenge('🐒','Macaco maluquinho','Imite um macaco por 20 segundos!'),
+    Challenge('🐧','Pinguim passeador','Caminhe como um pinguim.'),
+    Challenge('🦁','Leão poderoso','Faça o rugido mais poderoso de leão!'),
+    Challenge('🐸','Sapo saltitante','Dê três pulinhos de sapo.'),
+    Challenge('🐍','Cobra dançarina','Mexa o corpo como uma cobrinha.'),
+  ]),
+  Category('roxo_claro','Roleta das Caretas','ROXO CLARO',Color(0xFFCE93D8),'😜',[
+    Challenge('😲','Surpresa total','Faça a cara de quem viu algo incrível!'),
+    Challenge('🍋','Limão azedo','Finja que acabou de provar um limão.'),
+    Challenge('😴','Sono pesado','Faça a careta de quem está morrendo de sono.'),
+    Challenge('🤪','Careta maluca','Invente uma careta que ninguém fez ainda.'),
+    Challenge('😎','Superestrela','Faça sua pose mais famosa.'),
+  ]),
+  Category('azul','Passinho Robótico','AZUL',Color(0xFF1976D2),'🤖',[
+    Challenge('🤖','Robô enferrujado','Dance como um robô que está sem óleo.'),
+    Challenge('🦾','Braços mecânicos','Mexa os braços como um robô por 20 segundos.'),
+    Challenge('🚀','Decolagem','Finja que é um robô decolando para o espaço.'),
+    Challenge('⚙️','Modo lento','Faça três movimentos de robô bem devagar.'),
+    Challenge('💃','Dança do futuro','Invente um passinho robótico.'),
+  ]),
+  Category('verde','Caça às Cores','VERDE',Color(0xFF2E7D32),'🔎',[
+    Challenge('🟦','Caça azul','Encontre um objeto azul por perto.'),
+    Challenge('🔴','Algo redondo','Encontre um objeto redondo.'),
+    Challenge('📚','Pequeno explorador','Encontre algo que tenha letras.'),
+    Challenge('🌿','Natureza','Aponte para algo que lembre a natureza.'),
+    Challenge('⭐','Algo especial','Encontre um objeto que você gosta muito.'),
+  ]),
+  Category('amarelo_a','Cérebro Turbo','AMARELO A',Color(0xFFF9A825),'🧠',[
+    Challenge('➕','Conta rápida','Quanto é 3 + 4?'),
+    Challenge('🐾','Charada animal','Quem mia e gosta de dormir em caixas?'),
+    Challenge('🔢','Número secreto','Conte de 1 até 10 bem rapidinho.'),
+    Challenge('🍎','Frutas','Fale o nome de três frutas.'),
+    Challenge('🌞','Adivinha','O que aparece no céu durante o dia e ilumina tudo?'),
+  ]),
+  Category('laranja','Desafio Maluco','LARANJA',Color(0xFFEF6C00),'🎉',[
+    Challenge('👏','Palmas turbo','Bata palmas cinco vezes.'),
+    Challenge('🌀','Giro divertido','Dê uma volta devagar no próprio lugar, se houver espaço.'),
+    Challenge('🦩','Equilíbrio','Tente ficar em um pé por cinco segundos.'),
+    Challenge('🐢','Câmera lenta','Atravesse um pequeno espaço em câmera lenta.'),
+    Challenge('🙌','Estátua','Fique parado como uma estátua por cinco segundos.'),
+  ]),
+  Category('amarelo_b','Mestre das Palavras','AMARELO B',Color(0xFFFFC928),'💬',[
+    Challenge('🐱','Rima com gato','Diga uma palavra que rime com gato.'),
+    Challenge('🍓','Palavras de comida','Fale três comidas de que você gosta.'),
+    Challenge('🔠','Letra M','Diga três palavras que começam com M.'),
+    Challenge('🎈','Complete a frase','Complete: “Se eu pudesse voar, eu...”'),
+    Challenge('🐶','Vozes engraçadas','Diga “bom dia” com voz de robô.'),
+  ]),
+  Category('vermelho','Desafio Relâmpago','VERMELHO',Color(0xFFD74242),'⏱️',[
+    Challenge('👏','Palmas relâmpago','Bata palmas cinco vezes antes do tempo acabar.'),
+    Challenge('🦶','Pés ligeiros','Marche no lugar contando até dez.'),
+    Challenge('😄','Sorriso gigante','Mostre seu maior sorriso!'),
+    Challenge('🧍','Estátua relâmpago','Faça uma pose e fique parado por cinco segundos.'),
+    Challenge('🌈','Cores na cabeça','Fale três cores diferentes.'),
+  ]),
+];
 
-  AppMode mode = AppMode.test;
-
-  bool webReady = false;
-  bool loadingModel = false;
-  bool modelReady = false;
-  bool espConnected = false;
-  bool connectingEsp = false;
-
-  String modelStatus = 'Nenhum modelo carregado';
-  String gesture = 'NENHUM';
-  double confidence = 0;
-  String action = 'PARADO';
-
-  String previousGesture = '';
-  int consecutiveCount = 0;
-  String lastSentCommand = 'P';
+class RoletaHomePage extends StatefulWidget {
+  const RoletaHomePage({super.key});
+  @override
+  State<RoletaHomePage> createState() => _RoletaHomePageState();
+}
+class _RoletaHomePageState extends State<RoletaHomePage> {
+  static const teal = Color(0xFF20C6C8), orange = Color(0xFFFF7A00);
+  final _random = Random();
+  final _ble = BleService();
+  Category? category;
+  Challenge? challenge;
+  Timer? timer;
+  int seconds = 20, completed = 0;
+  bool running = false, connecting = false, connected = false;
+  String connectionStatus = 'ESP32 não conectado';
 
   @override
-  void initState() {
-    super.initState();
-    _requestCameraPermission();
+  void dispose() {
+    timer?.cancel();
+    _ble.dispose();
+    super.dispose();
   }
 
-  Future<void> _requestCameraPermission() async {
-    await Permission.camera.request();
+  void _snack(String text) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)..hideCurrentSnackBar()..showSnackBar(SnackBar(content: Text(text), behavior: SnackBarBehavior.floating));
   }
 
-  Future<void> _requestBluetoothPermissions() async {
-    await [
-      Permission.bluetoothScan,
-      Permission.bluetoothConnect,
-    ].request();
-  }
-
-  String _normalizeModelUrl(String raw) {
-    var value = raw.trim();
-    if (value.isEmpty) return '';
-
-    if (!value.startsWith('http://') && !value.startsWith('https://')) {
-      value = 'https://$value';
-    }
-
-    value = value.replaceFirst(
-        RegExp(r'/model\.json.*$', caseSensitive: false), '/');
-    value = value.replaceFirst(
-        RegExp(r'/metadata\.json.*$', caseSensitive: false), '/');
-
-    if (!value.endsWith('/')) value += '/';
-    return value;
-  }
-
-  Future<void> _loadModel() async {
-    final url = _normalizeModelUrl(modelController.text);
-
-    if (url.isEmpty) {
-      _snack('Cole o link compartilhável do Teachable Machine.');
-      return;
-    }
-
-    if (!webReady || webController == null) {
-      _snack(
-          'A câmera ainda está iniciando. Tente novamente em alguns segundos.');
-      return;
-    }
-
-    final cameraStatus = await Permission.camera.request();
-    if (!cameraStatus.isGranted) {
-      _snack('Permita o acesso à câmera para testar o modelo.');
-      return;
-    }
-
-    setState(() {
-      loadingModel = true;
-      modelReady = false;
-      modelStatus = 'Carregando modelo...';
-      gesture = 'NENHUM';
-      confidence = 0;
-      action = 'PARADO';
-    });
-
-    previousGesture = '';
-    consecutiveCount = 0;
-
-    await webController!.evaluateJavascript(
-      source: 'window.loadClubRobotModel(${jsonEncode(url)});',
-    );
-  }
-
-  Future<void> _openTeachableMachine() async {
-    final uri =
-        Uri.parse('https://teachablemachine.withgoogle.com/train/image');
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      _snack('Não foi possível abrir o Teachable Machine.');
-    }
-  }
-
-  Future<void> _connectEsp32() async {
-    if (connectingEsp) return;
-
-    await _requestBluetoothPermissions();
-
-    setState(() => connectingEsp = true);
-
+  Future<void> _connect() async {
+    if (connecting || connected) return;
+    setState(() { connecting = true; connectionStatus = 'Procurando ESP32...'; });
     try {
-      final name = await ble.connectToGuincho();
-
+      await [Permission.bluetoothScan, Permission.bluetoothConnect].request();
+      final name = await _ble.connect();
       if (!mounted) return;
-      setState(() {
-        espConnected = true;
-        connectingEsp = false;
-      });
-      _snack('$name conectado!');
+      setState(() { connected = true; connecting = false; connectionStatus = '$name conectado'; });
+      _snack('ESP32 conectado! O LED vai acompanhar os desafios.');
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        espConnected = false;
-        connectingEsp = false;
-        mode = AppMode.test;
-      });
+      setState(() { connected = false; connecting = false; connectionStatus = 'ESP32 não conectado'; });
       _snack(e.toString().replaceFirst('Exception: ', ''));
     }
   }
 
-  Future<void> _disconnectEsp32() async {
-    await _sendCommand('P', force: true);
-    await ble.disconnect();
-
+  Future<void> _disconnect() async {
+    timer?.cancel();
+    if (_ble.isConnected) {
+      try { await _ble.send('STOP'); } catch (_) {}
+      await _ble.disconnect();
+    }
     if (!mounted) return;
-    setState(() {
-      espConnected = false;
-      mode = AppMode.test;
-      action = 'PARADO';
+    setState(() { connected = false; connecting = false; connectionStatus = 'ESP32 não conectado'; running = false; seconds = 20; });
+  }
+
+  void _choose(Category chosen) {
+    if (running) { _snack('Termine o desafio atual antes de escolher outra cor.'); return; }
+    final list = chosen.challenges;
+    var next = list[_random.nextInt(list.length)];
+    if (list.length > 1 && challenge?.title == next.title) next = list[(list.indexOf(next) + 1) % list.length];
+    setState(() { category = chosen; challenge = next; seconds = 20; });
+  }
+
+  Future<void> _start() async {
+    if (challenge == null || running) return;
+    setState(() { running = true; seconds = 20; });
+    if (connected && _ble.isConnected) {
+      try { await _ble.send('START'); } catch (_) { _snack('O LED não respondeu. O cronômetro continua no app.'); }
+    }
+    timer?.cancel();
+    timer = Timer.periodic(const Duration(seconds: 1), (t) async {
+      if (!mounted) { t.cancel(); return; }
+      if (seconds <= 1) { t.cancel(); await _finish(false); }
+      else { setState(() => seconds--); }
     });
   }
 
-  Future<void> _setMode(AppMode newMode) async {
-    if (newMode == AppMode.crane) {
-      if (!modelReady) {
-        _snack('Carregue um modelo válido antes de controlar o guincho.');
-        return;
-      }
-
-      if (!espConnected) {
-        _snack('Conecte o ESP32 antes de ativar o modo guincho.');
-        return;
-      }
-
-      previousGesture = '';
-      consecutiveCount = 0;
-      lastSentCommand = 'P';
-    } else {
-      await _sendCommand('P', force: true);
-      previousGesture = '';
-      consecutiveCount = 0;
-      if (mounted) setState(() => action = 'PARADO');
+  Future<void> _finish(bool didComplete) async {
+    timer?.cancel();
+    if (connected && _ble.isConnected) {
+      try { await _ble.send('STOP'); } catch (_) {}
     }
-
-    if (mounted) setState(() => mode = newMode);
-  }
-
-  Future<void> _handlePrediction(Map<String, dynamic> data) async {
-    final label = (data['label'] ?? 'NENHUM').toString().trim().toUpperCase();
-    final score = (data['confidence'] as num?)?.toDouble() ?? 0.0;
-
     if (!mounted) return;
-
-    setState(() {
-      gesture = label;
-      confidence = score;
-    });
-
-    // No modo teste, apenas mostramos o que a IA está vendo.
-    if (mode == AppMode.test) {
-      setState(() => action = 'TESTANDO IA');
-      return;
-    }
-
-    // Segurança 1: baixa confiança = parar.
-    if (score < 0.85) {
-      _resetGestureCounter();
-      setState(() => action = 'PARADO • BAIXA CONFIANÇA');
-      await _sendCommand('P');
-      return;
-    }
-
-    // Segurança 2: NENHUM e MÃO ABERTA param imediatamente.
-    if (label == 'NENHUM' || label == 'MAO_ABERTA') {
-      _resetGestureCounter();
-      setState(() => action = 'PARADO');
-      await _sendCommand('P');
-      return;
-    }
-
-    if (!requiredLabels.contains(label)) {
-      _resetGestureCounter();
-      setState(() => action = 'PARADO • GESTO INVÁLIDO');
-      await _sendCommand('P');
-      return;
-    }
-
-    // Movimentos precisam de 2 leituras iguais consecutivas.
-    if (label == previousGesture) {
-      consecutiveCount += 1;
-    } else {
-      previousGesture = label;
-      consecutiveCount = 1;
-      setState(() => action = 'AGUARDANDO CONFIRMAÇÃO');
-      return;
-    }
-
-    if (consecutiveCount < 2) return;
-
-    switch (label) {
-      case 'PUNHO':
-        setState(() => action = 'SUBINDO');
-        await _sendCommand('S');
-        break;
-      case 'JOINHA':
-        setState(() => action = 'DESCENDO');
-        await _sendCommand('D');
-        break;
-      case 'ESQUERDA':
-        setState(() => action = 'ESQUERDA');
-        await _sendCommand('E');
-        break;
-      case 'DIREITA':
-        setState(() => action = 'DIREITA');
-        await _sendCommand('R');
-        break;
-    }
-
-    consecutiveCount = 0;
-  }
-
-  void _resetGestureCounter() {
-    previousGesture = '';
-    consecutiveCount = 0;
-  }
-
-  Future<void> _sendCommand(String command, {bool force = false}) async {
-    if (!espConnected || !ble.isConnected) return;
-
-    if (!force && lastSentCommand == command) return;
-
-    try {
-      await ble.send(command);
-      lastSentCommand = command;
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        espConnected = false;
-        mode = AppMode.test;
-        action = 'PARADO';
-      });
-      _snack('A conexão com o ESP32 foi perdida.');
-    }
-  }
-
-  Future<void> _emergencyStop() async {
-    _resetGestureCounter();
-    setState(() => action = 'PARADO • EMERGÊNCIA');
-    await _sendCommand('P', force: true);
-  }
-
-  void _snack(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+    setState(() { running = false; seconds = 20; if (didComplete) completed++; });
+    _snack(didComplete ? 'Mandou bem! Desafio concluído! 🎉' : 'Tempo encerrado! Vamos para o próximo?');
   }
 
   @override
-  void dispose() {
-    modelController.dispose();
-    ble.dispose();
-    super.dispose();
-  }
+  Widget build(BuildContext context) => Scaffold(
+    body: SafeArea(child: SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        _header(), const SizedBox(height: 18), _introCard(), const SizedBox(height: 16),
+        _connectionCard(), const SizedBox(height: 18), const Text('1. Qual cor saiu na roleta?',
+          style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 4), const Text('Escolha uma das oito cores para sortear uma missão.',
+          style: TextStyle(fontSize: 14, color: Color(0xFF737D7D))),
+        const SizedBox(height: 10), _grid(), const SizedBox(height: 18),
+        if (challenge != null) _challengeCard(), const SizedBox(height: 12),
+        Text('Desafios concluídos: $completed', textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 13, color: Color(0xFF7A8585), fontWeight: FontWeight.w700)),
+        const SizedBox(height: 6), const Text('ClubRobot • Aprender brincando!', textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 13, color: teal, fontWeight: FontWeight.w900)),
+      ]),
+    )),
+  );
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(22, 18, 22, 40),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _header(),
-              const SizedBox(height: 20),
-              _missionCard(),
-              const SizedBox(height: 18),
-              _modelCard(),
-              const SizedBox(height: 18),
-              _espCard(),
-              const SizedBox(height: 18),
-              _metrics(),
-              const SizedBox(height: 18),
-              _cameraCard(),
-              const SizedBox(height: 18),
-              _modeCard(),
-              const SizedBox(height: 18),
-              _actionCard(),
-              const SizedBox(height: 18),
-              _stopButton(),
-              const SizedBox(height: 14),
-              _legendCard(),
-            ],
+  Widget _header() => Column(children: [
+    Image.asset('assets/images/LOGO.png', height: 66,
+      errorBuilder: (_, __, ___) => const Icon(Icons.smart_toy_outlined, size: 60, color: teal)),
+    const SizedBox(height: 8),
+    const Text('ROLETA DA SORTE', textAlign: TextAlign.center,
+      style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Color(0xFF1F2222), letterSpacing: .3)),
+    const SizedBox(height: 3),
+    const Text('Missão 12 • Junior • Gire, escolha e divirta-se!', textAlign: TextAlign.center,
+      style: TextStyle(fontSize: 14, color: Color(0xFF7A8585), fontWeight: FontWeight.w600)),
+  ]);
+
+  Widget _card({required Widget child, Color color = Colors.white}) => Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(22),
+      boxShadow: const [BoxShadow(color: Color(0x0D142828), blurRadius: 14, offset: Offset(0, 5))]),
+    child: child,
+  );
+
+  Widget _introCard() => _card(child: const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    Text('🎡', style: TextStyle(fontSize: 38)), SizedBox(width: 12),
+    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('Sua vez de girar!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+      SizedBox(height: 6),
+      Text('Gire a roleta física, toque na cor que saiu e descubra o desafio surpresa.',
+        style: TextStyle(fontSize: 15, height: 1.35, color: Color(0xFF676F6F))),
+    ])),
+  ]));
+
+  Widget _connectionCard() => _card(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    Row(children: [
+      const Icon(Icons.bluetooth_rounded, color: teal, size: 26), const SizedBox(width: 8),
+      const Expanded(child: Text('Circuito ClubRobot', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
+      Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(color: connected ? const Color(0xFFE0F5EE) : const Color(0xFFF1F3F3), borderRadius: BorderRadius.circular(20)),
+        child: Text(connected ? 'CONECTADO' : 'OPCIONAL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900,
+          color: connected ? const Color(0xFF168466) : const Color(0xFF727B7B)))),
+    ]),
+    const SizedBox(height: 8), Text(connectionStatus, style: const TextStyle(color: Color(0xFF6D7777), fontSize: 14)),
+    const SizedBox(height: 10), SizedBox(width: double.infinity, child: connected
+      ? OutlinedButton.icon(onPressed: _disconnect, icon: const Icon(Icons.bluetooth_disabled), label: const Text('DESCONECTAR ESP32'))
+      : FilledButton.icon(onPressed: connecting ? null : _connect,
+        icon: connecting ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.bluetooth_searching),
+        label: Text(connecting ? 'PROCURANDO...' : 'CONECTAR ESP32'),
+        style: FilledButton.styleFrom(backgroundColor: teal, foregroundColor: Colors.white, minimumSize: const Size.fromHeight(46)))),
+    const SizedBox(height: 4), const Text('Sem o ESP32, o app também funciona: os desafios e o cronômetro ficam no celular.',
+      style: TextStyle(fontSize: 12, color: Color(0xFF8A9292), height: 1.3)),
+  ]));
+
+  Widget _grid() => GridView.builder(
+    shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), itemCount: categories.length,
+    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 1.18),
+    itemBuilder: (context, i) {
+      final item = categories[i], isSelected = category?.id == categories[i].id;
+      final darkText = item.id == 'roxo_claro' || item.id == 'amarelo_a' || item.id == 'amarelo_b';
+      final textColor = darkText ? const Color(0xFF282323) : Colors.white;
+      return Material(color: item.color, borderRadius: BorderRadius.circular(20),
+        child: InkWell(borderRadius: BorderRadius.circular(20), onTap: running ? null : () => _choose(item),
+          child: Container(padding: const EdgeInsets.all(11),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: isSelected ? teal : Colors.transparent, width: 4)),
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Text(item.emoji, style: const TextStyle(fontSize: 27)), const SizedBox(height: 4),
+              Text(item.label, textAlign: TextAlign.center, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: textColor)),
+              const SizedBox(height: 3), Text(item.name, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textColor)),
+              if (isSelected) Padding(padding: const EdgeInsets.only(top: 2), child: Icon(Icons.check_circle, color: textColor, size: 15)),
+            ]),
           ),
         ),
+      );
+    },
+  );
+
+  Widget _challengeCard() {
+    final chosen = category!, task = challenge!;
+    return _card(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Row(children: [
+        const Expanded(child: Text('2. Seu desafio é...', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900))),
+        if (completed > 0) Text('🏆 $completed', style: const TextStyle(fontWeight: FontWeight.w800)),
+      ]),
+      const SizedBox(height: 14),
+      Container(padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(color: chosen.color.withValues(alpha: .12), borderRadius: BorderRadius.circular(18)),
+        child: Column(children: [
+          Text(task.emoji, style: const TextStyle(fontSize: 66)), const SizedBox(height: 8),
+          Text(task.title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 8), Text(task.instruction, textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 17, height: 1.35, color: Color(0xFF4F5A5A))),
+        ]),
       ),
-    );
-  }
-
-  Widget _header() {
-    return Column(
-      children: [
-        Image.asset(
-          'assets/images/LOGO.png',
-          height: 74,
-          errorBuilder: (_, __, ___) => const Icon(
-            Icons.smart_toy_outlined,
-            size: 62,
-            color: teal,
-          ),
-        ),
+      const SizedBox(height: 14),
+      Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Icon(Icons.timer_outlined, color: running ? orange : teal, size: 24), const SizedBox(width: 8),
+        Text(running ? '$seconds s' : '20 segundos', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+      ]),
+      const SizedBox(height: 8),
+      ClipRRect(borderRadius: BorderRadius.circular(10), child: LinearProgressIndicator(value: running ? seconds / 20 : 0,
+        minHeight: 8, backgroundColor: const Color(0xFFE8EEEE), color: running ? orange : teal)),
+      const SizedBox(height: 14),
+      if (!running) ...[
+        FilledButton.icon(onPressed: _start, icon: const Icon(Icons.play_arrow_rounded), label: const Text('COMEÇAR DESAFIO'),
+          style: FilledButton.styleFrom(backgroundColor: orange, foregroundColor: Colors.white, minimumSize: const Size.fromHeight(52))),
         const SizedBox(height: 8),
-        const Text(
-          'GUINCHO INTELIGENTE',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 27,
-            fontWeight: FontWeight.w900,
-            color: Color(0xFF1F2222),
-          ),
-        ),
-        const SizedBox(height: 3),
-        const Text(
-          'Missão 14 • Junior • Minha própria IA',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 16,
-            color: Color(0xFF8A9292),
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        OutlinedButton.icon(onPressed: () => _choose(chosen), icon: const Icon(Icons.shuffle_rounded), label: const Text('SORTEAR OUTRO DESAFIO')),
+        const SizedBox(height: 8),
+        TextButton.icon(onPressed: () => setState(() { category = null; challenge = null; }),
+          icon: const Icon(Icons.refresh_rounded), label: const Text('ESCOLHER OUTRA COR')),
+      ] else ...[
+        FilledButton.icon(onPressed: () => _finish(true), icon: const Icon(Icons.check_circle_outline), label: const Text('CONSEGUI!'),
+          style: FilledButton.styleFrom(backgroundColor: const Color(0xFF169B7B), foregroundColor: Colors.white, minimumSize: const Size.fromHeight(52))),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(onPressed: () => _finish(false), icon: const Icon(Icons.stop_circle_outlined), label: const Text('ENCERRAR DESAFIO')),
       ],
-    );
-  }
-
-  Widget _missionCard() {
-    return _card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Text('🧠', style: TextStyle(fontSize: 30)),
-              SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  '1. Ensine a sua IA',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            'No Teachable Machine, crie as 6 classes, tire exemplos dos gestos, treine o modelo e gere o link compartilhável.',
-            style: TextStyle(
-              fontSize: 15,
-              height: 1.35,
-              color: Color(0xFF676F6F),
-            ),
-          ),
-          const SizedBox(height: 14),
-          FilledButton.icon(
-            onPressed: _openTeachableMachine,
-            icon: const Icon(Icons.open_in_new_rounded),
-            label: const Text('ABRIR TEACHABLE MACHINE'),
-            style: FilledButton.styleFrom(
-              backgroundColor: teal,
-              foregroundColor: Colors.white,
-              minimumSize: const Size.fromHeight(48),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _modelCard() {
-    return _card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Text('🤖', style: TextStyle(fontSize: 30)),
-              SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  '2. Coloque sua IA no app',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: modelController,
-            keyboardType: TextInputType.url,
-            autocorrect: false,
-            decoration: InputDecoration(
-              labelText: 'Link do seu modelo',
-              hintText: 'https://teachablemachine.withgoogle.com/models/...',
-              filled: true,
-              fillColor: const Color(0xFFF5F8F8),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
-                borderSide: BorderSide.none,
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          FilledButton.icon(
-            onPressed: loadingModel ? null : _loadModel,
-            icon: loadingModel
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Icon(Icons.cloud_download_rounded),
-            label: Text(
-              loadingModel ? 'CARREGANDO...' : 'CARREGAR MODELO',
-            ),
-            style: FilledButton.styleFrom(
-              backgroundColor: orange,
-              foregroundColor: Colors.white,
-              minimumSize: const Size.fromHeight(48),
-            ),
-          ),
-          const SizedBox(height: 12),
-          _statusLine(
-            modelReady ? Icons.check_circle : Icons.info_outline,
-            modelStatus,
-            modelReady ? green : const Color(0xFF7D8585),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _espCard() {
-    final bg = espConnected ? const Color(0xFFE4F8F2) : const Color(0xFFFFEAEA);
-    final fg = espConnected ? green : red;
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(26),
-      onTap: espConnected ? _disconnectEsp32 : _connectEsp32,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(26),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              espConnected
-                  ? Icons.bluetooth_connected_rounded
-                  : Icons.bluetooth_disabled_rounded,
-              color: fg,
-              size: 30,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                connectingEsp
-                    ? 'PROCURANDO ESP32...'
-                    : espConnected
-                        ? 'ESP32 CONECTADO • TOQUE PARA DESCONECTAR'
-                        : 'CONECTAR AO ESP32',
-                style: TextStyle(
-                  color: fg,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 15,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _metrics() {
-    return Row(
-      children: [
-        Expanded(
-          child: _metricCard(
-            _gestureEmoji(gesture),
-            'Gesto',
-            gesture,
-            orange,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _metricCard(
-            '🎯',
-            'Confiança',
-            '${(confidence * 100).round()}%',
-            teal,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _cameraCard() {
-    return Container(
-      height: 300,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: const Color(0xFFEAF4F4),
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x12000000),
-            blurRadius: 16,
-            offset: Offset(0, 7),
-          ),
-        ],
-      ),
-      child: FutureBuilder<String>(
-        future: rootBundle.loadString('assets/web/classifier.html'),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          return InAppWebView(
-            initialData: InAppWebViewInitialData(
-              data: snapshot.data!,
-              baseUrl: WebUri('https://localhost/'),
-              historyUrl: WebUri('https://localhost/'),
-            ),
-            initialSettings: InAppWebViewSettings(
-              javaScriptEnabled: true,
-              mediaPlaybackRequiresUserGesture: false,
-              allowsInlineMediaPlayback: true,
-              transparentBackground: true,
-              disableVerticalScroll: true,
-              disableHorizontalScroll: true,
-            ),
-            onPermissionRequest: (controller, request) async {
-              final status = await Permission.camera.request();
-
-              return PermissionResponse(
-                resources: request.resources,
-                action: status.isGranted
-                    ? PermissionResponseAction.GRANT
-                    : PermissionResponseAction.DENY,
-              );
-            },
-            onWebViewCreated: (controller) {
-              webController = controller;
-
-              controller.addJavaScriptHandler(
-                handlerName: 'webReady',
-                callback: (args) {
-                  if (mounted) setState(() => webReady = true);
-                  return {'ok': true};
-                },
-              );
-
-              controller.addJavaScriptHandler(
-                handlerName: 'modelStatus',
-                callback: (args) {
-                  if (args.isEmpty) return null;
-
-                  final data =
-                      jsonDecode(args.first.toString()) as Map<String, dynamic>;
-
-                  final ok = data['ok'] == true;
-
-                  if (!mounted) return null;
-
-                  if (ok) {
-                    final labels = ((data['labels'] as List?) ?? [])
-                        .map((e) => e.toString())
-                        .toList();
-
-                    setState(() {
-                      modelReady = true;
-                      loadingModel = false;
-                      modelStatus =
-                          'Modelo válido! ${labels.length} classes encontradas.';
-                    });
-                  } else {
-                    final reason = data['reason']?.toString() ?? 'erro';
-
-                    if (reason == 'missing_labels') {
-                      final missing =
-                          ((data['missing'] as List?) ?? []).join(', ');
-
-                      setState(() {
-                        modelReady = false;
-                        loadingModel = false;
-                        modelStatus = 'Faltam classes no modelo: $missing';
-                      });
-                    } else {
-                      setState(() {
-                        modelReady = false;
-                        loadingModel = false;
-                        modelStatus = 'Não foi possível carregar esse modelo.';
-                      });
-                    }
-
-                    mode = AppMode.test;
-                  }
-
-                  return {'received': true};
-                },
-              );
-
-              controller.addJavaScriptHandler(
-                handlerName: 'prediction',
-                callback: (args) {
-                  if (args.isEmpty) return null;
-
-                  final data =
-                      jsonDecode(args.first.toString()) as Map<String, dynamic>;
-
-                  _handlePrediction(data);
-                  return {'received': true};
-                },
-              );
-
-              controller.addJavaScriptHandler(
-                handlerName: 'classifierError',
-                callback: (args) {
-                  if (mounted) {
-                    setState(() => modelStatus =
-                        'A IA encontrou um problema durante o teste.');
-                  }
-                  return null;
-                },
-              );
-
-              // A página pode ter enviado webReady antes de o handler existir.
-              Future.delayed(const Duration(milliseconds: 500), () {
-                if (mounted) setState(() => webReady = true);
-              });
-            },
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _modeCard() {
-    return _card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '3. Escolha o modo',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 12),
-          SegmentedButton<AppMode>(
-            segments: const [
-              ButtonSegment(
-                value: AppMode.test,
-                icon: Icon(Icons.science_outlined),
-                label: Text('TESTAR IA'),
-              ),
-              ButtonSegment(
-                value: AppMode.crane,
-                icon: Icon(Icons.precision_manufacturing_outlined),
-                label: Text('CONTROLAR'),
-              ),
-            ],
-            selected: {mode},
-            onSelectionChanged: (values) {
-              _setMode(values.first);
-            },
-          ),
-          const SizedBox(height: 10),
-          Text(
-            mode == AppMode.test
-                ? 'A IA reconhece os gestos, mas não movimenta o guincho.'
-                : 'Os gestos confirmados são enviados ao ESP32.',
-            style: const TextStyle(
-              color: Color(0xFF777F7F),
-              height: 1.3,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _actionCard() {
-    return _card(
-      child: Row(
-        children: [
-          Container(
-            width: 66,
-            height: 66,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF0F5F4),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            alignment: Alignment.center,
-            child: const Text('🏗️', style: TextStyle(fontSize: 32)),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Ação Atual',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  action,
-                  style: TextStyle(
-                    color: action.startsWith('PARADO')
-                        ? const Color(0xFF8B9292)
-                        : teal,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 18,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _stopButton() {
-    return FilledButton.icon(
-      onPressed: _emergencyStop,
-      icon: const Icon(Icons.stop_circle_outlined, size: 28),
-      label: const Text(
-        'PARADA DE EMERGÊNCIA',
-        style: TextStyle(fontWeight: FontWeight.w900),
-      ),
-      style: FilledButton.styleFrom(
-        backgroundColor: red,
-        foregroundColor: Colors.white,
-        minimumSize: const Size.fromHeight(58),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(22),
-        ),
-      ),
-    );
-  }
-
-  Widget _legendCard() {
-    return _card(
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Gestos da missão',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-          ),
-          SizedBox(height: 10),
-          Text('✊ PUNHO → Subir'),
-          Text('🖐️ MAO_ABERTA → Parar'),
-          Text('👍 JOINHA → Descer'),
-          Text('👈 ESQUERDA → Mover para esquerda'),
-          Text('👉 DIREITA → Mover para direita'),
-          Text('👀 NENHUM → Parar'),
-        ],
-      ),
-    );
-  }
-
-  Widget _card({required Widget child}) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x12000000),
-            blurRadius: 16,
-            offset: Offset(0, 7),
-          ),
-        ],
-      ),
-      child: child,
-    );
-  }
-
-  Widget _metricCard(
-    String emoji,
-    String title,
-    String value,
-    Color valueColor,
-  ) {
-    return Container(
-      constraints: const BoxConstraints(
-        minHeight: 155,
-      ),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(26),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x10000000),
-            blurRadius: 14,
-            offset: Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 35)),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 5),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              style: TextStyle(
-                color: valueColor,
-                fontSize: 19,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _statusLine(IconData icon, String text, Color color) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 20, color: color),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w700,
-              height: 1.3,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  String _gestureEmoji(String value) {
-    switch (value) {
-      case 'PUNHO':
-        return '✊';
-      case 'MAO_ABERTA':
-        return '🖐️';
-      case 'JOINHA':
-        return '👍';
-      case 'ESQUERDA':
-        return '👈';
-      case 'DIREITA':
-        return '👉';
-      default:
-        return '👀';
-    }
+    ]));
   }
 }
