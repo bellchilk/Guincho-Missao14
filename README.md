@@ -1,159 +1,52 @@
-# ClubRobot — Missão 14 Junior
-## Guincho Inteligente: Minha própria IA
+# ClubRobot — Missão 12: Roleta da Sorte
 
-Este projeto Flutter foi feito para a dinâmica:
+App Flutter para crianças a partir de 6 anos. A criança gira a roleta física, seleciona a cor que saiu, recebe um desafio aleatório daquela categoria e tem 20 segundos para realizá-lo. Quando o ESP32 está conectado por Bluetooth BLE, um LED acende no início e apaga ao terminar o cronômetro.
 
-1. A criança abre o **Google Teachable Machine**.
-2. Cria e treina um modelo de imagens.
-3. Cria exatamente estas classes:
-   - `PUNHO`
-   - `MAO_ABERTA`
-   - `JOINHA`
-   - `ESQUERDA`
-   - `DIREITA`
-   - `NENHUM`
-4. No Teachable Machine, usa:
-   **Export Model > TensorFlow.js > Upload (shareable link)**.
-5. Copia o endereço no formato:
-   `https://teachablemachine.withgoogle.com/models/ABC123/`
-6. Cola esse link no app.
-7. O app carrega `model.json` e `metadata.json` do modelo da própria criança.
-8. Primeiro ela usa **TESTAR IA**.
-9. Depois conecta o ESP32 e usa **CONTROLAR**.
+## Identidade visual
 
-## Regras de segurança do app
+Segue a estética do app Guincho Inteligente da Missão 14: fundo claro, cards arredondados, tipografia forte, turquesa ClubRobot (#20C6C8), laranja (#FF7A00) e logo oficial do ClubRobot.
 
-- confiança abaixo de 85% -> `PARAR`
-- `NENHUM` -> `PARAR`
-- `MAO_ABERTA` -> `PARAR` imediatamente
-- movimentos precisam ser reconhecidos 2 vezes consecutivas
-- o modo inicial é **TESTAR IA**, sem enviar movimentos ao ESP32
-- há um botão grande de **PARADA DE EMERGÊNCIA**
+## Cores e categorias
 
-## Gestos e comandos BLE
+- Roxo escuro: Bichos Malucos
+- Roxo claro: Roleta das Caretas
+- Azul: Passinho Robótico
+- Verde: Caça às Cores
+- Amarelo A: Cérebro Turbo
+- Laranja: Desafio Maluco
+- Amarelo B: Mestre das Palavras
+- Vermelho: Desafio Relâmpago
 
-| Classe | Comando | Ação |
-|---|---|---|
-| PUNHO | S | Subir |
-| MAO_ABERTA | P | Parar |
-| JOINHA | D | Descer |
-| ESQUERDA | E | Esquerda |
-| DIREITA | R | Direita |
-| NENHUM | P | Parar |
+## Montagem do LED
 
-## Importante sobre o modelo da criança
+1. GPIO 18 do ESP32 -> resistor de 220 a 330 ohms -> perna longa (ânodo) do LED.
+2. Perna curta (cátodo) do LED -> GND.
+3. Alimente o ESP32 pelo USB durante os testes.
+4. O firmware apaga o LED se o celular desconectar e inclui um limite de segurança de 60 segundos ligado.
 
-Os nomes das classes precisam ser exatamente os indicados acima.
-O app verifica as classes quando o modelo é carregado e avisa se alguma estiver faltando.
+Confira o pinout do seu modelo de ESP32 antes de montar. O sketch é direcionado ao ESP32-WROOM/DevKit clássico e usa a API BLE Arduino do ESP32.
 
-O app NÃO possui um modelo fixo dentro do APK. Cada criança pode colar o próprio link compartilhável.
+## Firmware
 
-## Como usar na pasta Flutter que você já criou
+Abra esp32/roleta_missao12.ino na Arduino IDE, selecione a placa ESP32 adequada e grave o firmware. O dispositivo BLE anuncia ESP32_ROLETA.
 
-Na pasta do seu projeto Flutter atual:
+## Gerar APK pelo GitHub Actions
 
-1. Substitua/copiem:
-   - `lib/`
-   - `assets/`
-   - `pubspec.yaml`
-   - `android/app/src/main/AndroidManifest.xml`
-   - `android/app/proguard-rules.pro`
-2. Rode:
+O workflow .github/workflows/build-apk.yml compila o APK na nuvem.
 
-```bash
-flutter pub get
-```
+1. Abra a aba Actions no GitHub.
+2. Escolha **Gerar APK Android - Roleta da Sorte**.
+3. Clique em **Run workflow**.
+4. Quando terminar, abra a execução e baixe o artifact **roleta-missao12-apk**.
+5. Dentro do ZIP estará app-release.apk.
 
-3. Para testar no celular físico:
+O workflow executa flutter analyze lib antes da compilação. Se falhar, abra os logs da etapa que ficou vermelha para identificar a causa.
 
-```bash
-flutter devices
-flutter run -d ID_DO_CELULAR
-```
+## BLE
 
-## Como gerar APK localmente
+O app usa o mesmo par de UUIDs do projeto Guincho Missão 14:
 
-Você pode dar dois cliques em:
+- Serviço: 6f400001-b5a3-f393-e0a9-e50e24dcca9e
+- Característica: 6f400002-b5a3-f393-e0a9-e50e24dcca9e
 
-```text
-GERAR_APK.bat
-```
-
-ou usar:
-
-```bash
-flutter create --platforms=android .
-python tool/patch_android.py
-flutter pub get
-flutter build apk --release
-```
-
-Ao terminar:
-
-```text
-build/app/outputs/flutter-apk/app-release.apk
-```
-
-## Como gerar APK SEM pesar o notebook — recomendado
-
-O projeto já inclui:
-
-```text
-.github/workflows/build-apk.yml
-```
-
-Esse arquivo permite que o GitHub compile o APK em um computador na nuvem.
-
-### Passos
-
-1. Crie um repositório no GitHub.
-2. Envie todo o conteúdo desta pasta.
-3. Abra o repositório no GitHub.
-4. Clique em **Actions**.
-5. Abra **Gerar APK Android**.
-6. Clique em **Run workflow**.
-7. Espere o build terminar.
-8. Abra a execução concluída.
-9. Em **Artifacts**, baixe:
-   `guincho-missao14-apk`
-10. Dentro do ZIP estará:
-   `app-release.apk`
-
-Assim o notebook não precisa executar Gradle/NDK para criar o APK.
-
-## ESP32
-
-Na pasta:
-
-```text
-esp32/guincho_missao14.ino
-```
-
-há um exemplo de firmware BLE.
-
-Nome anunciado:
-
-```text
-ESP32_GUINCHO
-```
-
-O app e o ESP32 usam estes UUIDs:
-
-```text
-Service:
-6f400001-b5a3-f393-e0a9-e50e24dcca9e
-
-Characteristic:
-6f400002-b5a3-f393-e0a9-e50e24dcca9e
-```
-
-Antes de ligar servos, teste os comandos pelo Monitor Serial.
-
-## Observação sobre internet
-
-O celular precisa estar conectado à internet para:
-- abrir o Teachable Machine;
-- baixar o modelo pelo link compartilhável;
-- carregar as bibliotecas TensorFlow.js/Teachable Machine usadas pela câmera.
-
-Depois que o modelo é carregado, a inferência acontece no próprio dispositivo, mas a página é recriada quando o app é reaberto, então o link precisa ser carregado novamente.
+Comandos: START (acende o LED) e STOP (apaga o LED).
