@@ -1,5 +1,5 @@
-name: guincho_missao14
-description: Missão 14 Junior - Guincho controlado pelo modelo Teachable Machine da criança.
+name: roleta_missao12
+description: ClubRobot Missão 12 - Roleta da Sorte com Flutter e ESP32.
 publish_to: "none"
 version: 1.0.0+1
 
@@ -9,10 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_inappwebview: 6.2.0-beta.3
   flutter_blue_plus: 1.36.8
   permission_handler: ^12.0.3
-  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:
@@ -24,10 +22,9 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
-    - assets/web/
 
 flutter_launcher_icons:
   android: true
   ios: false
-  image_path: "assets/images/Robô Cheerful com Braços Erguidos.png"
+  image_path: "assets/images/LOGO.png"
   min_sdk_android: 21
